@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "randomc.h"
 #include <unordered_map>
+#include <queue>
 #define D 4
 #define SCORE_5 1000000
 
@@ -167,13 +168,21 @@ struct Node{
     }
 };
 
-void print(vector<qz> QZs)
+void print(vector<qz> QZs,bool _score=0,bool _block=0,bool _anotherIJ=0)
 {
     cout<<"QZs:";
     for(int i=0;i<QZs.size();i++)
     {
-        QZs[i].print(1,0,0);
+        QZs[i].print(_score,_block,_anotherIJ);
     }
+}
+void print(vector<int> vec)
+{
+    for(int i=vec.size()-2;i>=0;i-=2)
+    {
+        cout<<vec[i]<<","<<vec[i+1]<<" ";
+    }
+    cout<<endl;
 }
 inline void changeIJ(int &i,int &j,int drc,int reverse=0)
 {
@@ -236,9 +245,8 @@ struct IntelligentBoard{
         }
         cout<<"//////////////////////"<<endl;
     }
-    vector<int> setCandidateQZ(int I,int J,int d=1)
+    void setCandidateQZ(int I,int J,int d,vector<int> &setQZs)
     {
-        vector<int> setQZs;
         for(int i=max(0,I-d);i<min(N,I+d+1);i++)
             for(int j=max(0,J-d);j<min(N,J+d+1);j++)
             {
@@ -248,7 +256,6 @@ struct IntelligentBoard{
                     candidateQZ[i][j]=1;
                 }
             }
-        return setQZs;
     }
     void setCandidateQZ_reverse(vector<int> &setCandidateQZs)
     {
@@ -292,19 +299,20 @@ struct IntelligentBoard{
     {
         memset(candidateQZ,0,sizeof(candidateQZ));
     }
-    vector<int> calMaxLen(int I,int J,int P,bool flagBoard[N][N][4],int drc)
+    void calMaxLen(int I,int J,int P,bool flagBoard[N][N][4],int drc,int &len,int &block,int &empty,int &I0,int &J0,int &I1,int &J1)
     {
 
         //P=1或2
         int i=I,j=J;
         flagBoard[i][j][drc]=1;
         changeIJ(i,j,drc);
-        int len=1,block=0;
+        len=1;block=0;
         while(i>=0&&j>=0&&i<N&&j<N)
         {
             if(flagBoard[i][j][drc]&&board[i][j].P==P)
             {
-                return {-1,-1};
+                len=-1;
+                return;
             }
             if(!board[i][j].P)
             {
@@ -339,7 +347,7 @@ struct IntelligentBoard{
         {
             block++;
         }
-        int I0=i,J0=j;
+        I0=i;J0=j;
         changeIJ(I0,J0,drc,1);
         i=I;j=J;
         changeIJ(i,j,drc,1);
@@ -347,7 +355,8 @@ struct IntelligentBoard{
         {
             if(flagBoard[i][j][drc]&&board[i][j].P==P)
             {
-                return {-1,-1};
+                len=-1;
+                return ;
             }
             if(!board[i][j].P)
             {
@@ -381,9 +390,8 @@ struct IntelligentBoard{
         {
             block++;
         }
-        int I1=i,J1=j;
+        I1=i;J1=j;
         changeIJ(I1,J1,drc);
-        return {len,block,0,I0,J0,I1,J1};
     }
     vector<float> Score(const vector<qz> &QZs,bool print=0,int set=1,bool sethash=0,bool setCandidate=0)
     {
@@ -402,15 +410,16 @@ struct IntelligentBoard{
             }
             if(setCandidate)
             {
-                setCandidateQZ(I,J,2);
+                vector<int> nouse;
+                setCandidateQZ(I,J,2,nouse);
             }
             for(int drc=0;drc<=3;drc++)
             {
                 if(flagBoard[I][J][drc])
                     continue;
-                vector<int> tmp=calMaxLen(I,J,P,flagBoard,drc);
-                int len=tmp[0],block=tmp[1],empty=tmp[2],I0=tmp[3],J0=tmp[4],I1=tmp[5],J1=tmp[6];
 
+                int len,block,empty,I0,J0,I1,J1;
+                calMaxLen(I,J,P,flagBoard,drc,len,block,empty,I0,J0,I1,J1);
                 if(len==-1)
                     continue;
                 float s=0;
@@ -450,15 +459,15 @@ struct IntelligentBoard{
             cout<<score[0]<<" "<<score[1]<<"/////////////////"<<endl;
         return {score[0],score[1]};
     }
-    vector<float> Score_local(const vector<qz> &QZs,int start,vector<qz> &editedQZs,bool set=1,bool print=0)
+    void Score_local(const qz &temp,vector<qz> &editedQZs,float &SCORE0,float &SCORE1,bool set=1,bool print=0)
     {
         editedQZs.clear();
         //计算场上双方的分数
         bool flagBoard[N][N][4]={0};
         float score[2]={0};
-        for(int i=start;i<QZs.size();i++)
-        {
-            const qz &temp=QZs[i];
+//        for(int i=start;i<QZs.size();i++)
+//        {
+//            const qz &temp=QZs[i];
             //temp.print();
             int I=temp.i,J=temp.j,P=temp.P;
             int neg_P=!(P-1)+1;
@@ -467,8 +476,8 @@ struct IntelligentBoard{
                 I=temp.i;J=temp.j;
                 if(flagBoard[I][J][drc])
                     continue;
-                vector<int> tmp=calMaxLen(I,J,P,flagBoard,drc);
-                int len=tmp[0],block=tmp[1],empty=tmp[2],I0=tmp[3],J0=tmp[4],I1=tmp[5],J1=tmp[6];
+                int len,block,empty,I0,J0,I1,J1;
+                calMaxLen(I,J,P,flagBoard,drc,len,block,empty,I0,J0,I1,J1);
 
                 if(len==-1)
                     continue;
@@ -493,7 +502,6 @@ struct IntelligentBoard{
 //                    if(empty)
 //                        s*=0.5;
                 }
-
 //                if(print&&len>1)
 //                    cout<<"Local drc:"<<drc<<" len:"<<len<<" block:"<<block<<" empty:"<<empty<<" P:"<<P<<" s:"<<s<<" I:"<<I<<" J:"<<J<<endl;
 //                if(len>1)
@@ -598,7 +606,6 @@ struct IntelligentBoard{
                                 board[another_i][another_j].set1(drc,0,2);
                             }
                         neg_q.set1(drc,0,2);
-                        \
                         }
                     }
                     else
@@ -621,11 +628,11 @@ struct IntelligentBoard{
                 }
                 }
             }
-            flagBoard[I][J][0]=1;flagBoard[I][J][1]=1;flagBoard[I][J][2]=1;flagBoard[I][J][3]=1;
-        }
+//            flagBoard[I][J][0]=1;flagBoard[I][J][1]=1;flagBoard[I][J][2]=1;flagBoard[I][J][3]=1;
+//        }
         if(print)
             cout<<"Local "<<score[0]<<" "<<score[1]<<"/////////////////"<<endl;
-        return {score[0],score[1]};
+        SCORE0=score[0];SCORE1=score[1];
     }
     inline float get_score(int len,int block,int empty=0)
     {
@@ -673,8 +680,8 @@ struct IntelligentBoard{
                 if(board[I][J].P==P)
                 {
                     oneP=1;
-                    vector<int> tmp=calMaxLen(I,J,P,flagBoard,drc);
-                    int len=tmp[0],block=tmp[1],empty=tmp[2],I0=tmp[3],J0=tmp[4],I1=tmp[5],J1=tmp[6];
+                    int len,block,empty,I0,J0,I1,J1;
+                    calMaxLen(I,J,P,flagBoard,drc,len,block,empty,I0,J0,I1,J1);
                     float s=get_score(len,block,empty);
                     if(s>0)
                     {
@@ -716,8 +723,8 @@ struct IntelligentBoard{
                 if(board[I][J].P==P)
                 {
                     twoP=1;
-                    vector<int> tmp=calMaxLen(I,J,P,flagBoard,drc);
-                    int len=tmp[0],block=tmp[1],empty=tmp[2],I0=tmp[3],J0=tmp[4],I1=tmp[5],J1=tmp[6];
+                    int len,block,empty,I0,J0,I1,J1;
+                    calMaxLen(I,J,P,flagBoard,drc,len,block,empty,I0,J0,I1,J1);
                     float s=get_score(len,block,empty);
                     if(s>0)
                     {
@@ -757,8 +764,8 @@ struct IntelligentBoard{
                 I=temp.i;J=temp.j;
                 if(!oneP&&!twoP)
                 {
-                    vector<int> tmp=calMaxLen(I,J,P,flagBoard,drc);
-                    int len=tmp[0],block=tmp[1],empty=tmp[2],I0=tmp[3],J0=tmp[4],I1=tmp[5],J1=tmp[6];
+                    int len,block,empty,I0,J0,I1,J1;
+                    calMaxLen(I,J,P,flagBoard,drc,len,block,empty,I0,J0,I1,J1);
                     float s=get_score(len,block,empty);
                     score[P-1]-=s;
                 }
@@ -770,7 +777,7 @@ struct IntelligentBoard{
 //                cout<<I0<<" "<<J0<<" "<<I1<<" "<<J1<<" "<<I<<" "<<J<<endl;
 
             }
-            flagBoard[I][J][0]=1;flagBoard[I][J][1]=1;flagBoard[I][J][2]=1;flagBoard[I][J][3]=1;
+//            flagBoard[I][J][0]=1;flagBoard[I][J][1]=1;flagBoard[I][J][2]=1;flagBoard[I][J][3]=1;
 
         if(print)
             cout<<"Local Reverse:"<<score[0]<<" "<<score[1]<<"/////////////////"<<endl;
@@ -798,7 +805,7 @@ vector<int> calMaxLen(int I,int J,int P,int board[N][N],bool flagBoard[N][N][4],
     {
         if(flagBoard[i][j][drc]&&board[i][j]==P)
         {
-            return {-1,-1};
+            return {-1,-1,0};
         }
         if(!board[i][j])
         {
@@ -839,7 +846,7 @@ vector<int> calMaxLen(int I,int J,int P,int board[N][N],bool flagBoard[N][N][4],
     {
         if(flagBoard[i][j][drc]&&board[i][j]==P)
         {
-            return {-1,-1};
+            return {-1,-1,0};
         }
         if(!board[i][j])
         {
@@ -944,50 +951,25 @@ vector<float> decision(int board[N][N],vector<qz> &QZs,int P,int type=0)
 
             vector<float> score=Score(board,QZs);
             float myScore=score[P],opScore=score[!P];
-            float AIScore=myScore,HumanScore=opScore;
-            if(P!=MainWindow::P_AI)
-            {
-                AIScore=opScore;
-                HumanScore=myScore;
-            }
-            if(AIfirst)
-                AIScore*=1.1;
-            else
-                HumanScore*=1.1;
-            float final_score_AI=AIScore-HumanScore;
-//            float final_score=myScore;
-            if(type)
-            {
-                if(myScore>max_score)
-                {
-                    max_score=myScore;
-                    max_i=i;
-                    max_j=j;
-                    max_myScore=max_score;
-                    max_opScore=opScore;
-                }
-            }
-            else
-            {
-            if(MainWindow::P_AI==P&&final_score_AI>max_score)
-            {
-                max_score=final_score_AI;
-                max_i=i;
-                max_j=j;
-                max_myScore=myScore;
-                max_opScore=opScore;
-                final_score_AI_maxmin=final_score_AI;
-            }
-            else if(MainWindow::P_AI!=P&&final_score_AI<min_score)
-            {
-                min_score=final_score_AI;
-                max_i=i;
-                max_j=j;
-                max_myScore=myScore;
-                max_opScore=opScore;
-                final_score_AI_maxmin=final_score_AI;
-            }
-            }
+//            float AIScore=myScore,HumanScore=opScore;
+//            if(P!=MainWindow::P_AI)
+//            {
+//                AIScore=opScore;
+//                HumanScore=myScore;
+//            }
+                        float final_score=myScore;
+                        if(!type)
+                        {
+                            final_score-=1.2*opScore;
+                        }
+                        if(final_score>max_score)
+                        {
+                            max_score=final_score;
+                            max_i=i;
+                            max_j=j;
+                            max_myScore=myScore;
+                            max_opScore=opScore;
+                        }
             board[i][j]=0;
         }
     QZs.pop_back();
@@ -1173,13 +1155,14 @@ vector<int> alpha_beta(vector<Node*> &Nodes,int board[N][N],vector<qz> &QZs)
         }
     }
 }
-int recur_D=4;
+int recur_D=6;
+int recur_D_origin=2;
 struct recur_return{
     float score=0;
     vector<int> path;
 };
 bool recur_reverse=0;
-inline float genAIScore_recur(float s0,float s1)
+inline float genAIScore_recur(float s0,float s1,int d=recur_D)
 {
     float AIScore=s0,HumanScore=s1;
     if(MainWindow::P_AI!=0)
@@ -1187,7 +1170,7 @@ inline float genAIScore_recur(float s0,float s1)
         AIScore=s1;
         HumanScore=s0;
     }
-    if((recur_D%2)^recur_reverse)
+    if((d%2)^recur_reverse)
         HumanScore*=1.2;
     else
         AIScore*=1.2;
@@ -1199,7 +1182,41 @@ inline float genAIScore_recur(float s0,float s1)
 }
 bool jianzhi=1;
 IntelligentBoard IBoard;
-recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,float SCORE0,float SCORE1)
+bool CMP(const qz &q1,const qz &q2)
+{
+    return q1.score[0]<q2.score[0];
+}
+inline void getCandidate4recur(vector<qz> &ans,int d,int P,float SCORE0,float SCORE1,int candidateN=N*2)
+{
+    //P=1,2
+    priority_queue<qz, vector<qz> ,decltype(&CMP)> Q(CMP);
+    for(int i=max(0,Imin-d-1);i<min(N,Imax+d+2);i++)
+        for(int j=max(0,Jmin-d-1);j<min(N,Jmax+d+2);j++)
+        {
+            if(IBoard.board[i][j].P)
+                continue;
+            if(!IBoard.candidateQZ[i][j])
+                continue;
+            IBoard.board[i][j].P=P;
+            qz temp(i,j,P);
+            float s0,s1;
+            vector<qz> nouse;
+            IBoard.Score_local(temp,nouse,s0,s1,0);
+            float AIScore=genAIScore_recur(SCORE0+s0,SCORE1+s1,d+1);
+            if((d%2)^recur_reverse)
+                AIScore*=-1;
+            temp.score[0]=AIScore;
+            Q.push(temp);
+            IBoard.board[i][j].P=0;
+            //total_N++;
+        }
+    for(int i=0;i<candidateN&&!Q.empty();i++)
+    {
+        ans.push_back(Q.top());
+        Q.pop();
+    }
+}
+recur_return alpha_beta_recur(float alpha,float beta,const qz &q,int d,float SCORE0,float SCORE1)
 {
     int I0=q.i,J0=q.j,P=q.P-1;//P=0,1
     recur_return max_r;
@@ -1224,8 +1241,6 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
 //        }
 //        }
         IBoard.board[I0][J0].P=P+1;
-        QZs.push_back(q);
-        vector<float> deltas;
         bool last_d=0;
         if(d==recur_D)
         {
@@ -1238,15 +1253,18 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
     //        cout<<delta_s0<<" "<<delta_s1<<endl;
     //        //IBoard.print(QZs,1);
     //    }
-        deltas=IBoard.Score_local(QZs,QZs.size()-1,editedQZs,!last_d);
-        delta_s0=deltas[0];delta_s1=deltas[1];
-        if(SCORE0+delta_s0>=SCORE_5||SCORE1+delta_s1>=SCORE_5)
+        IBoard.Score_local(q,editedQZs,delta_s0,delta_s1,!last_d);
+        SCORE0+=delta_s0;SCORE1+=delta_s1;
+        if(SCORE0>=SCORE_5||SCORE1>=SCORE_5)
         {
+            if(SCORE0>=SCORE_5)
+                SCORE0=SCORE_5;
+            else
+                SCORE1=SCORE_5;
             if(!last_d)
                 IBoard.setQZfromQZs(editedQZs);
             IBoard.board[I0][J0].reset();
-            QZs.pop_back();
-            float AIScore=genAIScore_recur(SCORE0+delta_s0,SCORE1+delta_s1);
+            float AIScore=genAIScore_recur(SCORE0,SCORE1);
             if((d%2)^recur_reverse)
                 AIScore*=-1;
             max_r.score=AIScore;
@@ -1261,16 +1279,49 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
         int max_i,max_j;
         vector<int> setCandidateQZs;
         if(I0!=-1)
-            setCandidateQZs=IBoard.setCandidateQZ(I0,J0);
-        for(int i=max(0,Imin-recur_D);i<min(N,Imax+recur_D);i++)
-            for(int j=max(0,Jmin-recur_D);j<min(N,Jmax+recur_D);j++)
+         IBoard.setCandidateQZ(I0,J0,1,setCandidateQZs);
+        vector<qz> Candidate;
+        getCandidate4recur(Candidate,d,!P+1,SCORE0,SCORE1);
+//        for(int i=max(0,Imin-d-1);i<min(N,Imax+d+2);i++)
+//            for(int j=max(0,Jmin-d-1);j<min(N,Jmax+d+2);j++)
+//            {
+//                if(IBoard.board[i][j].P)
+//                    continue;
+//                if(!IBoard.candidateQZ[i][j])
+//                    continue;
+//                qz next_q(i,j,!P+1);
+//                recur_return r=alpha_beta_recur(-beta,-alpha,next_q,d+1,SCORE0,SCORE1);
+//                float v=r.score;
+//                v*=-1;
+//                if(v>maxScore)
+//                {
+//                    maxScore=v;
+//                    max_i=i;
+//                    max_j=j;
+//                    max_r.path=r.path;
+//                }
+//                alpha=max(maxScore,alpha);
+//                if(v>=beta)
+//                {
+//                    IBoard.setQZfromQZs(editedQZs);
+//                    IBoard.board[I0][J0].reset();
+//                    r.score=v;
+//                    //r.path.push_back(qz(max_i,max_j,P+1));
+//                   //if(d>=3)
+//                   //zobrist.set_value(hashkey,d,v,0);
+//                    IBoard.setCandidateQZ_reverse(setCandidateQZs);
+//                    return r;
+//                }
+//            }
+            for(int k=0;k<Candidate.size();k++)
             {
+                int i=Candidate[k].i,j=Candidate[k].j;
                 if(IBoard.board[i][j].P)
                     continue;
                 if(!IBoard.candidateQZ[i][j])
                     continue;
                 qz next_q(i,j,!P+1);
-                recur_return r=alpha_beta_recur(-beta,-alpha,next_q,d+1,QZs,SCORE0+delta_s0,SCORE1+delta_s1);
+                recur_return r=alpha_beta_recur(-beta,-alpha,next_q,d+1,SCORE0,SCORE1);
                 float v=r.score;
                 v*=-1;
                 if(v>maxScore)
@@ -1285,16 +1336,15 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
                 {
                     IBoard.setQZfromQZs(editedQZs);
                     IBoard.board[I0][J0].reset();
-                    QZs.pop_back();
                     r.score=v;
                     //r.path.push_back(qz(max_i,max_j,P+1));
-//                    if(d>=3)
-//                    zobrist.set_value(hashkey,d,v,0);
+                   //if(d>=3)
+                   //zobrist.set_value(hashkey,d,v,0);
                     IBoard.setCandidateQZ_reverse(setCandidateQZs);
                     return r;
                 }
-                //total_N++;
             }
+
 
 //        cout<<I0<<" "<<J0<<" "<<max_i<<" "<<max_j<<" "<<maxScore<<" "<<d<<endl;
 //        for(int i=0;i<QZs.size();i++)
@@ -1302,9 +1352,8 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
 //        cout<<endl;
         if(I0!=-1)
         {
-            IBoard.setQZfromQZs(editedQZs);
+        IBoard.setQZfromQZs(editedQZs);
         IBoard.board[I0][J0].reset();
-        QZs.pop_back();
         IBoard.setCandidateQZ_reverse(setCandidateQZs);
         }
         max_r.score=maxScore;
@@ -1316,9 +1365,8 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
     }
     else
     {
-        float AIScore=genAIScore_recur(SCORE0+delta_s0,SCORE1+delta_s1);
+        float AIScore=genAIScore_recur(SCORE0,SCORE1);
         IBoard.board[I0][J0].P=0;
-        QZs.pop_back();
         if((recur_D%2)^recur_reverse)
             AIScore*=-1;
         max_r.score=AIScore;
@@ -1329,45 +1377,63 @@ recur_return alpha_beta_recur(float alpha,float beta,qz q,int d,vector<qz> &QZs,
     }
     return max_r;
 }
-recur_return alpha_beta_recur_origin(float alpha,float beta,qz q,int d,vector<qz> &QZs)
+array<float,3> alpha_beta_recur_origin(float alpha,float beta,const qz &q,int d,float SCORE0,float SCORE1)
 {
     int I0=q.i,J0=q.j,P=q.P-1;//P=0,1
-    recur_return max_r;
+    float delta_s0=0,delta_s1=0;
+    vector<qz> editedQZs;
     if(I0!=-1)
     {
-    IBoard.board[I0][J0].P=P+1;
-    QZs.push_back(q);
+        IBoard.board[I0][J0].P=P+1;
+        bool last_d=0;
+        if(d==recur_D_origin)
+        {
+            last_d=1;
+        }
+        IBoard.Score_local(q,editedQZs,delta_s0,delta_s1,!last_d);
+        SCORE0+=delta_s0;SCORE1+=delta_s1;
+        if(SCORE0>=SCORE_5||SCORE1>=SCORE_5)
+        {
+            if(SCORE0>=SCORE_5)
+                SCORE0=SCORE_5;
+            else
+                SCORE1=SCORE_5;
+            if(!last_d)
+                IBoard.setQZfromQZs(editedQZs);
+            IBoard.board[I0][J0].reset();
+            float AIScore=genAIScore_recur(SCORE0,SCORE1);
+            if((d%2)^recur_reverse)
+                AIScore*=-1;
+            return {AIScore,0,0};
+        }
     }
-    if(d<recur_D)
+    if(d<recur_D_origin)
     {
         float maxScore=-100000000;
         int max_i,max_j;
-        for(int i=max(0,Imin-recur_D);i<min(N,Imax+recur_D);i++)
-            for(int j=max(0,Jmin-recur_D);j<min(N,Jmax+recur_D);j++)
+        for(int i=max(0,Imin-recur_D_origin);i<min(N,Imax+recur_D_origin+1);i++)
+            for(int j=max(0,Jmin-recur_D_origin);j<min(N,Jmax+recur_D_origin+1);j++)
             {
                 if(IBoard.board[i][j].P)
                     continue;
                 qz next_q(i,j,!P+1);
-                recur_return r=alpha_beta_recur_origin(-beta,-alpha,next_q,d+1,QZs);
-                float v=r.score;
+                array<float,3> r=alpha_beta_recur_origin(-beta,-alpha,next_q,d+1,SCORE0,SCORE1);
+                float v=r[0];
                 v*=-1;
                 if(v>maxScore)
                 {
                     maxScore=v;
                     max_i=i;
                     max_j=j;
-                    max_r.path=r.path;
                 }
                 alpha=max(maxScore,alpha);
-//                if(v>=beta)
-//                {
-//                    IBoard.board[I0][J0].P=0;
-//                    QZs.pop_back();
-//                    r.score=v;
-//                    //r.path.push_back(qz(max_i,max_j,P+1));
-//                    return r;
-//                }
-                //total_N++;
+                if(v>=beta)
+                {
+                    IBoard.setQZfromQZs(editedQZs);
+                    IBoard.board[I0][J0].reset();
+                    //r.path.push_back(qz(max_i,max_j,P+1));
+                    return {v,0,0};
+                }
             }
 
 //        cout<<I0<<" "<<J0<<" "<<max_i<<" "<<max_j<<" "<<maxScore<<" "<<d<<endl;
@@ -1376,25 +1442,49 @@ recur_return alpha_beta_recur_origin(float alpha,float beta,qz q,int d,vector<qz
 //        cout<<endl;
         if(I0!=-1)
         {
-        IBoard.board[I0][J0].P=0;
-        QZs.pop_back();
+            IBoard.setQZfromQZs(editedQZs);
+            IBoard.board[I0][J0].reset();
         }
-        max_r.score=maxScore;
-        max_r.path.push_back(max_i);max_r.path.push_back(max_j);
-        return max_r;
+        return {maxScore,float(max_i),float(max_j)};
     }
     else
     {
-        vector<float> score=IBoard.Score(QZs,0,0);
-        float AIScore=genAIScore_recur(score[0],score[1]);
+        float AIScore=genAIScore_recur(SCORE0,SCORE1);
         IBoard.board[I0][J0].P=0;
-        QZs.pop_back();
-        if((recur_D%2)^recur_reverse)
+        if((d%2)^recur_reverse)
             AIScore*=-1;
-        max_r.score=AIScore;
-        return max_r;
+        return {AIScore,0,0};
     }
-    return max_r;
+    return {0,0,0};
+}
+
+void MainWindow::getCandidate(vector<qz> &ans,int candidateN=N)
+{
+    priority_queue<qz, vector<qz> ,decltype(&CMP)> Q(CMP);
+    for(int i=max(0,Imin-2);i<min(N,Imax+3);i++)
+        for(int j=max(0,Jmin-2);j<min(N,Jmax+3);j++)
+        {
+            if(board[i][j])
+                continue;
+            if(!IBoard.candidateQZ[i][j])
+                continue;
+            board[i][j]=P_AI+1;
+            qz temp(i,j,P_AI+1);
+            QZs.push_back(temp);
+            vector<float> score=Score(board,QZs);
+            float s0=score[0],s1=score[1];
+            temp.score[0]=s1-s0*1.2;
+//            temp.score[1]=s0;temp.score[2]=s1;
+            Q.push(temp);
+            board[i][j]=0;
+            QZs.pop_back();
+            //total_N++;
+        }
+    for(int i=0;i<candidateN&&!Q.empty();i++)
+    {
+        ans.push_back(Q.top());
+        Q.pop();
+    }
 }
 
 
@@ -1580,9 +1670,7 @@ void MainWindow::mousePressEvent(QMouseEvent *m){
     last_s1=score[1];
     if(!qz_del&&!leftbutton)
     {
-    vector<float> ds=IBoard.Score_local(this->QZs,this->QZs.size()-1,this->editedQZs,1,1);
-    predict_ds0=ds[0];
-    predict_ds1=ds[1];
+    IBoard.Score_local(this->QZs.back(),this->editedQZs,predict_ds0,predict_ds1,1,1);
     }
 
     //IBoard.print(this->QZs,1);
@@ -1674,7 +1762,7 @@ void MainWindow::AI2(){
     secondery_paint_N=0;
     IBoard.clearCandidate();
     vector<float> tempS=IBoard.Score(this->QZs,0,1,0,1);
-    IBoard.printCandidate();
+//    IBoard.printCandidate();
     float SCORE0=tempS[0],SCORE1=tempS[1];
     int I,J;
     int origin_recurD=recur_D;
@@ -1682,25 +1770,50 @@ void MainWindow::AI2(){
     {
         recur_D=1;
     }
-    recur_return r=alpha_beta_recur(-100000000,100000000,qz(-1,-1,1),0,this->QZs,SCORE0,SCORE1);
-    IBoard.printCandidate();
+    vector<qz> candidate;
+    getCandidate(candidate);
+    //print(candidate,1);
+    float alpha=-100000000,beta=100000000,maxScore=-100000000;
+    int max_i,max_j;
+    recur_return max_r;
+    for(int i=0;i<candidate.size();i++)
+    {
+        int I=candidate[i].i,J=candidate[i].j;
+        candidate[i].print(1);
+        qz next_q(I,J,P_AI+1);
+        recur_return r=alpha_beta_recur(-beta,-alpha,next_q,1,SCORE0,SCORE1);
+        float v=r.score;
+        v*=-1;
+        cout<<v<<" ";
+        print(r.path);
+        if(v>maxScore)
+        {
+            maxScore=v;
+            max_i=I;
+            max_j=J;
+            max_r.path=r.path;
+        }
+        alpha=max(maxScore,alpha);
+    }
+//    recur_return r=alpha_beta_recur(-100000000,100000000,qz(-1,-1,1),0,this->QZs,SCORE0,SCORE1);
+//    IBoard.printCandidate();
     if(this->QZs.size()==1)
     {
         recur_D=origin_recurD;
     }
-    vector<int> path=r.path;
-    cout<<"AI2:r.score "<<r.score<<endl;
+    vector<int> path=max_r.path;
+    cout<<"AI2:r.score "<<maxScore<<endl;
 //    cout<<"AI2:path.size() "<<path.size()<<endl;
     predict_QZs.clear();
     predict_paint_N=0;
     int tempP=!P_AI;
-    for(int d=path.size()-4;d>=0;d-=2)
+    for(int d=path.size()-2;d>=0;d-=2)
     {
         cout<<"predict next ij:"<<path[d]<<" "<<path[d+1]<<endl;
         predict_QZs.push_back(qz(path[d],path[d+1],tempP+1));
         tempP=!tempP;
     }
-    I=path[path.size()-2];J=path[path.size()-1];
+    I=max_i;J=max_j;
     Imin=min(Imin,I);Jmin=min(Jmin,J);Imax=max(Imax,I);Jmax=max(Jmax,J);
     this->board[I][J]=P_AI+1;
     IBoard.board[I][J].P=P_AI+1;
@@ -1714,6 +1827,7 @@ void MainWindow::on_pushButton_clicked(){
     AIfirst=!AIfirst;
     memset(this->board,0,sizeof(this->board));
     this->QZs.clear();
+    IBoard.clear();
     Imin=N;Imax=-1;Jmin=N;Jmax=-1;
     if(AIfirst)
     {
@@ -1738,7 +1852,7 @@ void MainWindow::on_pushButton_3_clicked(){
     recur_reverse=1;
     vector<float> tempS=IBoard.Score(this->QZs,0,1,0,1);
     float SCORE0=tempS[0],SCORE1=tempS[1];
-    recur_return r=alpha_beta_recur(-100000000,100000000,qz(-1,-1,2),0,this->QZs,SCORE0,SCORE1);
+    recur_return r=alpha_beta_recur(-100000000,100000000,qz(-1,-1,2),0,SCORE0,SCORE1);
     vector<int> path=r.path;
     cout<<r.score<<endl;
 //    cout<<path.size()<<endl;
@@ -1757,21 +1871,21 @@ void MainWindow::on_pushButton_3_clicked(){
 }
 void MainWindow::on_pushButton_4_clicked(){
 //    jianzhi=0;
-    secondery_paint_N=recur_D;
-//    vector<float> tempS=IBoard.Score(this->QZs);
-//    float SCORE0=tempS[0],SCORE1=tempS[1];
-    recur_return r=alpha_beta_recur_origin(-100000000,100000000,qz(-1,-1,1),0,this->QZs);
-    vector<int> path=r.path;
-    cout<<"button4:r.score "<<r.score<<endl;
-//    cout<<path.size()<<endl;
-    secondery_predict.clear();
-    int tempP=P_AI;
-    for(int d=path.size()-2;d>max(int(path.size()-1-recur_D),-1);d-=2)
-    {
-        cout<<"secondery predict next ij:"<<path[d]<<" "<<path[d+1]<<endl;
-        secondery_predict.push_back(qz(path[d],path[d+1],tempP+1));
-        tempP=!tempP;
-    }
-//    jianzhi=1;
-    this->repaint();
+//    secondery_paint_N=recur_D;
+////    vector<float> tempS=IBoard.Score(this->QZs);
+////    float SCORE0=tempS[0],SCORE1=tempS[1];
+//    recur_return r=alpha_beta_recur_origin(-100000000,100000000,qz(-1,-1,1),0,this->QZs);
+//    vector<int> path=r.path;
+//    cout<<"button4:r.score "<<r.score<<endl;
+////    cout<<path.size()<<endl;
+//    secondery_predict.clear();
+//    int tempP=P_AI;
+//    for(int d=path.size()-2;d>max(int(path.size()-1-recur_D),-1);d-=2)
+//    {
+//        cout<<"secondery predict next ij:"<<path[d]<<" "<<path[d+1]<<endl;
+//        secondery_predict.push_back(qz(path[d],path[d+1],tempP+1));
+//        tempP=!tempP;
+//    }
+////    jianzhi=1;
+//    this->repaint();
 }

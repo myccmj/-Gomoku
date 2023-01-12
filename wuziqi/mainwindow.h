@@ -7,8 +7,8 @@
 #include <QMouseEvent>
 #include <iostream>
 #include <math.h>
-#define N 10
-#define rowWid 65
+#define N 15
+#define rowWid 50
 
 
 using namespace std;
@@ -104,6 +104,7 @@ public:
     void AI();
     void AI1();
     void AI2();
+    void getCandidate(vector<qz>&,int);
     int board[N][N]={0};
     vector<qz> QZs;
     vector<qz> predict_QZs;

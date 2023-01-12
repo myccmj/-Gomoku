@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1021</width>
+    <width>1044</width>
     <height>672</height>
    </rect>
   </property>
@@ -17,8 +17,8 @@
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
-      <x>690</x>
-      <y>30</y>
+      <x>770</x>
+      <y>20</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -30,8 +30,8 @@
    <widget class="QPushButton" name="pushButton_2">
     <property name="geometry">
      <rect>
-      <x>690</x>
-      <y>70</y>
+      <x>770</x>
+      <y>50</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -43,8 +43,8 @@
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>700</x>
-      <y>140</y>
+      <x>770</x>
+      <y>120</y>
       <width>201</width>
       <height>71</height>
      </rect>
@@ -56,8 +56,8 @@
    <widget class="QPushButton" name="pushButton_3">
     <property name="geometry">
      <rect>
-      <x>690</x>
-      <y>100</y>
+      <x>770</x>
+      <y>80</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -69,14 +69,14 @@
    <widget class="QPushButton" name="pushButton_4">
     <property name="geometry">
      <rect>
-      <x>690</x>
-      <y>250</y>
+      <x>770</x>
+      <y>210</y>
       <width>93</width>
       <height>28</height>
      </rect>
     </property>
     <property name="text">
-     <string>非递归预测</string>
+     <string>非优化预测</string>
     </property>
    </widget>
   </widget>
@@ -85,7 +85,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1021</width>
+     <width>1044</width>
      <height>26</height>
     </rect>
    </property>
